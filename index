@@ -1,1 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Category Theory — An Interactive Introduction</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+  :root {
+    --bg:       #fafaf8;
+    --surface:  #f3f2ee;
+    --border:   #e0dfd8;
+    --border-md:#c8c7be;
+    --text:     #1a1a18;
+    --text-2:   #5a5a54;
+    --text-3:   #9a9a90;
+    --green:    #1D9E75;
+    --green-lt: #E1F5EE;
+    --green-dk: #0F6E56;
+    --amber:    #BA7517;
+    --amber-lt: #FAEEDA;
+    --red:      #A32D2D;
+    --red-lt:   #FCEBEB;
+    --r-md:     8px;
+    --r-lg:     12px;
+    --font: 'Georgia', 'Times New Roman', serif;
+    --mono: 'Courier New', monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:       #181816;
+      --surface:  #222220;
+      --border:   #333330;
+      --border-md:#444440;
+      --text:     #e8e8e0;
+      --text-2:   #a0a098;
+      --text-3:   #606058;
+      --green-lt: #04342C;
+      --amber-lt: #412402;
+      --red-lt:   #501313;
+    }
+  }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 16px;
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+
+  /* ── Layout ── */
+  .page {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 6rem;
+  }
+
+  /* ── Header ── */
+  header {
+    margin-bottom: 3rem;
+    border-bottom: 0.5px solid var(--border);
+    padding-bottom: 2rem;
+  }
+
+  header h1 {
+    font-size: 2rem;
+    font-weight: normal;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.4rem;
+    line-height: 1.2;
+  }
+
+  header .subtitle {
+    font-size: 1rem;
+    color: var(--text-2);
+    font-style: italic;
+    margin-bottom: 1rem;
+  }
+
+  header .byline {
+    font-size: 0.8rem;
+    color: var(--text-3);
+    font-family: var(--mono);
+    letter-spacing: 0.04em;
+  }
+
+  /* ── Stage label ── */
+  .stage-label {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-bottom: 0.4rem;
+  }
+
+  /* ── Progress dots ── */
+  .progress {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 1.25rem;
+  }
+
+  .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--border-md);
+    transition: background 0.3s;
+  }
+
+  .dot.done    { background: var(--green); }
+  .dot.current { background: var(--green); opacity: 0.45; }
+
+  .progress-label {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--text-3);
+    margin-left: 4px;
+  }
+
+  /* ── Prompt box ── */
+  .prompt-box {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.25rem;
+    font-size: 0.95rem;
+    line-height: 1.65;
+  }
+
+  .prompt-box strong { font-weight: bold; }
+  .prompt-box em { font-style: italic; }
+
+  /* ── Toolbar ── */
+  .toolbar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 0.85rem;
+    flex-wrap: wrap;
+  }
+
+  .tool-btn {
+    font-size: 0.8rem;
+    font-family: var(--mono);
+    padding: 6px 14px;
+    border-radius: var(--r-md);
+    border: 0.5px solid var(--border-md);
+    background: var(--bg);
+    color: var(--text-2);
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.02em;
+  }
+
+  .tool-btn:hover { background: var(--surface); color: var(--text); }
+
+  .tool-btn.active {
+    background: var(--green-lt);
+    border-color: var(--green);
+    color: var(--green-dk);
+  }
+
+  /* ── Canvas ── */
+  .canvas-wrap {
+    position: relative;
+    border: 0.5px solid var(--border);
+    border-radius: var(--r-lg);
+    background: var(--bg);
+    overflow: hidden;
+    height: 300px;
+    margin-bottom: 0.85rem;
+    user-select: none;
+  }
+
+  .canvas-wrap svg { width: 100%; height: 100%; display: block; }
+
+  .obj-node circle {
+    fill: var(--surface);
+    stroke: var(--border-md);
+    stroke-width: 1.5;
+    transition: stroke 0.15s, fill 0.15s;
+    cursor: pointer;
+  }
+
+  .obj-node text {
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: bold;
+    fill: var(--text);
+    text-anchor: middle;
+    dominant-baseline: central;
+    pointer-events: none;
+  }
+
+  .obj-node.selected circle { stroke: var(--green); fill: var(--green-lt); stroke-width: 2; }
+  .obj-node:hover circle    { stroke: var(--green); fill: var(--green-lt); }
+
+  .arrow-line {
+    stroke: var(--text-2);
+    stroke-width: 1.5;
+    fill: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .arrow-line.visible { opacity: 1; }
+
+  .arrow-line.derived {
+    stroke: var(--green);
+    stroke-dasharray: 5 3;
+  }
+
+  .arrow-label {
+    font-family: var(--mono);
+    font-size: 12px;
+    fill: var(--text-2);
+    text-anchor: middle;
+    dominant-baseline: central;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+  }
+
+  .arrow-label.visible { opacity: 1; }
+  .arrow-label.derived { fill: var(--green); }
+
+  .identity-arc {
+    stroke: var(--text-3);
+    stroke-width: 1.2;
+    fill: none;
+    stroke-dasharray: 3 3;
+    opacity: 0;
+    transition: opacity 0.3s;
+    cursor: pointer;
+  }
+
+  .identity-arc.visible { opacity: 1; }
+
+  .id-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    fill: var(--text-3);
+    text-anchor: middle;
+    dominant-baseline: central;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .id-label.visible { opacity: 1; }
+
+  /* ── Feedback bar ── */
+  .feedback-bar {
+    min-height: 2.2rem;
+    font-size: 0.85rem;
+    color: var(--text-2);
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 0 0.1rem;
+    margin-bottom: 1rem;
+    line-height: 1.5;
+  }
+
+  .feedback-bar.success { color: var(--green-dk); }
+  .feedback-bar.hint    { color: var(--amber); }
+
+  .feedback-icon { flex-shrink: 0; margin-top: 2px; }
+
+  /* ── Law cards ── */
+  .law-panel {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 8px;
+    margin-bottom: 1.25rem;
+  }
+
+  .law-card {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: var(--r-md);
+    padding: 0.7rem 0.9rem;
+    font-size: 0.82rem;
+    transition: all 0.2s;
+  }
+
+  .law-card .law-title {
+    font-family: var(--mono);
+    font-weight: bold;
+    color: var(--text);
+    margin-bottom: 3px;
+    font-size: 0.8rem;
+  }
+
+  .law-card .law-body {
+    color: var(--text-2);
+    line-height: 1.45;
+    font-size: 0.78rem;
+  }
+
+  .law-card.satisfied {
+    border-color: var(--green);
+    background: var(--green-lt);
+  }
+
+  .law-card.satisfied .law-title { color: var(--green-dk); }
+  .law-card.satisfied .law-body  { color: var(--green-dk); opacity: 0.8; }
+
+  /* ── Next button ── */
+  .next-btn {
+    display: none;
+    padding: 9px 22px;
+    background: var(--green);
+    color: #fff;
+    border: none;
+    border-radius: var(--r-md);
+    font-size: 0.85rem;
+    font-family: var(--mono);
+    cursor: pointer;
+    letter-spacing: 0.02em;
+    transition: background 0.15s;
+  }
+
+  .next-btn:hover { background: var(--green-dk); }
+
+  /* ── Theory aside ── */
+  .theory-aside {
+    margin-top: 2.5rem;
+    padding-top: 1.5rem;
+    border-top: 0.5px solid var(--border);
+  }
+
+  .theory-aside h3 {
+    font-size: 0.75rem;
+    font-family: var(--mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-bottom: 0.75rem;
+  }
+
+  .theory-aside p {
+    font-size: 0.88rem;
+    color: var(--text-2);
+    margin-bottom: 0.6rem;
+    line-height: 1.65;
+  }
+
+  .theory-aside code {
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 5px;
+    color: var(--text);
+  }
+
+  /* ── Completion banner ── */
+  .completion-banner {
+    display: none;
+    background: var(--green-lt);
+    border: 0.5px solid var(--green);
+    border-radius: var(--r-lg);
+    padding: 1.25rem 1.5rem;
+    margin-top: 1.5rem;
+    font-size: 0.9rem;
+    color: var(--green-dk);
+    line-height: 1.65;
+  }
+
+  .completion-banner h2 {
+    font-size: 1rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    color: var(--green-dk);
+  }
+
+  footer {
+    margin-top: 4rem;
+    padding-top: 1.5rem;
+    border-top: 0.5px solid var(--border);
+    font-size: 0.78rem;
+    color: var(--text-3);
+    font-family: var(--mono);
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <h1>Category Theory</h1>
+    <div class="subtitle">An interactive introduction from first principles</div>
+    <div class="byline">Stage 1 of N &mdash; Objects, Morphisms &amp; Composition</div>
+  </header>
+
+  <div class="stage-label">Stage 1 — Objects &amp; Morphisms</div>
+  <div class="progress" id="progress"></div>
+  <div class="prompt-box" id="prompt-box"></div>
+
+  <div class="toolbar">
+    <button class="tool-btn active" id="btn-arrow"    onclick="setTool('arrow')">→ place arrow</button>
+    <button class="tool-btn"        id="btn-identity" onclick="setTool('identity')">↻ place identity</button>
+    <button class="tool-btn"        id="btn-erase"    onclick="setTool('erase')">✕ erase</button>
+    <button class="tool-btn"        id="btn-reset"    onclick="resetLevel()">⟳ reset</button>
+  </div>
+
+  <div class="canvas-wrap" id="canvas-wrap">
+    <svg id="canvas" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5"
+          markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="var(--text-2)"
+            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </marker>
+        <marker id="ah-green" viewBox="0 0 10 10" refX="8" refY="5"
+          markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="var(--green)"
+            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </marker>
+        <marker id="ah-dim" viewBox="0 0 10 10" refX="8" refY="5"
+          markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="var(--text-3)"
+            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </marker>
+      </defs>
+      <g id="arrows-layer"></g>
+      <g id="nodes-layer"></g>
+    </svg>
+  </div>
+
+  <div class="feedback-bar" id="feedback-bar">
+    <span class="feedback-icon">◦</span>
+    <span id="feedback-text">Select a tool, then click objects to interact.</span>
+  </div>
+
+  <div class="law-panel" id="law-panel"></div>
+
+  <button class="next-btn" id="next-btn" onclick="nextLevel()">next puzzle →</button>
+
+  <div class="completion-banner" id="completion-banner">
+    <h2>Stage 1 complete.</h2>
+    <p>You now know the full definition of a category: a collection of objects, with morphisms between them, satisfying two laws — composition (chained arrows produce a composite) and identity (every object has a do-nothing arrow back to itself). That's it. Everything else in category theory is built on top of these two constraints.</p>
+    <p>Coming next: functors — structure-preserving maps between entire categories.</p>
+  </div>
+
+  <div class="theory-aside" id="theory-aside">
+    <h3>Why this matters</h3>
+    <p id="theory-text"></p>
+  </div>
+
+  <footer>
+    built interactively &mdash; stage 1 of an ongoing series &mdash; contributions welcome
+  </footer>
+
+</div>
+
+<script>
+const LEVELS = [
+  {
+    title: "Place the morphism",
+    desc: `Two objects exist: <strong>A</strong> and <strong>B</strong>. You are told there is a morphism from A to B, written <em>f : A → B</em>. Place it.`,
+    theory: `In category theory, objects are completely opaque — we say nothing about what's inside them. A morphism <code>f : A → B</code> is just a directed relationship. Not a function, not a mapping of elements — just a structured connection with a direction.`,
+    objects: [
+      { id:'A', x:0.28, y:0.5 },
+      { id:'B', x:0.72, y:0.5 },
+    ],
+    required: [['A','B']],
+    derived:  [],
+    identities: [],
+    laws: [
+      { id:'f', title:'f : A → B', body:'A directed morphism from A to B.',
+        check: s => s.arrows.some(a=>a[0]==='A'&&a[1]==='B') },
+    ],
+    feedback: {
+      default: 'Click A (source), then B (target) to place the arrow.',
+      placed_AB: 'f : A → B is placed. Notice we said nothing about what A or B contain — they\'re just nodes. The arrow is the whole story.',
+      done: 'f : A → B placed. This is the most primitive thing in category theory — a directed connection.',
+    }
+  },
+  {
+    title: "Composition is a law, not a choice",
+    desc: `Given <em>f : A → B</em> and <em>g : B → C</em>, the category laws require a composite <em>g∘f : A → C</em> to exist. Place f and g — the composite appears automatically.`,
+    theory: `Composition is not something you add on top of a category — it is constitutive of what a category <em>is</em>. Whenever two morphisms chain (the target of one equals the source of the next), their composite must exist. You cannot have <code>f : A → B</code> and <code>g : B → C</code> in a category without also having <code>g∘f : A → C</code>.`,
+    objects: [
+      { id:'A', x:0.18, y:0.5 },
+      { id:'B', x:0.5,  y:0.5 },
+      { id:'C', x:0.82, y:0.5 },
+    ],
+    required: [['A','B'],['B','C']],
+    derived:  [['A','C']],
+    identities: [],
+    laws: [
+      { id:'f',    title:'f : A → B',   body:'First morphism.',  check: s=>s.arrows.some(a=>a[0]==='A'&&a[1]==='B') },
+      { id:'g',    title:'g : B → C',   body:'Second morphism.', check: s=>s.arrows.some(a=>a[0]==='B'&&a[1]==='C') },
+      { id:'comp', title:'g∘f : A → C exists', body:'Required by composition law — appears when f and g are both placed.',
+        check: s=>s.arrows.some(a=>a[0]==='A'&&a[1]==='B')&&s.arrows.some(a=>a[0]==='B'&&a[1]==='C') },
+    ],
+    feedback: {
+      default: 'Place f : A → B first.',
+      placed_AB: 'f placed. Now place g : B → C.',
+      placed_BC: 'g placed — and g∘f : A → C appeared automatically. You didn\'t place it; the laws required it.',
+      done: 'Composition is not a choice. Chained arrows always produce a composite.',
+    }
+  },
+  {
+    title: "Identity morphisms",
+    desc: `Every object must have an identity morphism — an arrow from itself back to itself that does nothing. The law: <em>f∘id_A = f</em> and <em>id_B∘f = f</em>. Place <em>f : A → B</em>, <em>id_A</em>, and <em>id_B</em>.`,
+    theory: `Identity morphisms are the categorical version of "doing nothing." They're required by definition — every object in every category has one. The constraint is that composing any morphism with an identity leaves it unchanged: <code>f∘id_A = f</code>, <code>id_B∘f = f</code>. They're trivial, but their existence is what makes categories well-defined algebraic structures.`,
+    objects: [
+      { id:'A', x:0.3, y:0.5 },
+      { id:'B', x:0.7, y:0.5 },
+    ],
+    required: [['A','B']],
+    derived:  [],
+    identities: ['A','B'],
+    laws: [
+      { id:'f',   title:'f : A → B', body:'',
+        check: s=>s.arrows.some(a=>a[0]==='A'&&a[1]==='B') },
+      { id:'idA', title:'id_A : A → A', body:'Identity on A. Use the ↻ tool, then click A.',
+        check: s=>s.ids.includes('A') },
+      { id:'idB', title:'id_B : B → B', body:'Identity on B. Use the ↻ tool, then click B.',
+        check: s=>s.ids.includes('B') },
+    ],
+    feedback: {
+      default: 'Place f : A → B, then use the ↻ tool to place identity morphisms on A and B.',
+      placed_id: 'Identity placed. Switch to ↻ tool to place the remaining one.',
+      done: 'A complete category snapshot: one morphism, two identity morphisms, two laws satisfied.',
+    }
+  },
+  {
+    title: "Associativity",
+    desc: `With three chained morphisms — <em>f : A→B</em>, <em>g : B→C</em>, <em>h : C→D</em> — composition must be associative: <em>h∘(g∘f) = (h∘g)∘f</em>. Place all three; all composites appear.`,
+    theory: `Associativity means the order in which you bracket composites doesn't matter — only the order of the arrows themselves does. <code>h∘(g∘f)</code> and <code>(h∘g)∘f</code> are the same morphism <code>A → D</code>. This is what makes long chains of transformations unambiguous — you can always compose a sequence of morphisms without specifying how to parenthesize it.`,
+    objects: [
+      { id:'A', x:0.12, y:0.5 },
+      { id:'B', x:0.37, y:0.5 },
+      { id:'C', x:0.63, y:0.5 },
+      { id:'D', x:0.88, y:0.5 },
+    ],
+    required: [['A','B'],['B','C'],['C','D']],
+    derived:  [['A','C'],['B','D'],['A','D']],
+    identities: [],
+    laws: [
+      { id:'f', title:'f : A → B', body:'', check: s=>s.arrows.some(a=>a[0]==='A'&&a[1]==='B') },
+      { id:'g', title:'g : B → C', body:'', check: s=>s.arrows.some(a=>a[0]==='B'&&a[1]==='C') },
+      { id:'h', title:'h : C → D', body:'', check: s=>s.arrows.some(a=>a[0]==='C'&&a[1]==='D') },
+      { id:'assoc', title:'h∘(g∘f) = (h∘g)∘f', body:'All composites appear; bracketing order doesn\'t change the result.',
+        check: s=>s.arrows.some(a=>a[0]==='A'&&a[1]==='B')&&s.arrows.some(a=>a[0]==='B'&&a[1]==='C')&&s.arrows.some(a=>a[0]==='C'&&a[1]==='D') },
+    ],
+    feedback: {
+      default: 'Place f, g, and h one by one.',
+      done: 'Three composites appeared: g∘f, h∘g, and h∘g∘f. Bracketing them differently gives the same result — that\'s associativity.',
+    }
+  },
+];
+
+let level = 0;
+let state = { arrows:[], ids:[] };
+let tool = 'arrow';
+let selecting = null;
+
+function lv() { return LEVELS[level]; }
+
+function init() {
+  state = { arrows:[], ids:[] };
+  selecting = null;
+  renderProgress();
+  renderPrompt();
+  renderCanvas();
+  renderLaws();
+  renderTheory();
+  document.getElementById('next-btn').style.display = 'none';
+  document.getElementById('completion-banner').style.display = 'none';
+  feedback('default');
+}
+
+function renderProgress() {
+  const el = document.getElementById('progress');
+  el.innerHTML = LEVELS.map((_, i) =>
+    `<span class="dot ${i < level ? 'done' : i === level ? 'current' : ''}"></span>`
+  ).join('') + `<span class="progress-label">${level+1} / ${LEVELS.length}</span>`;
+}
+
+function renderPrompt() {
+  document.getElementById('prompt-box').innerHTML =
+    `<strong>${lv().title}.</strong> ${lv().desc}`;
+}
+
+function renderTheory() {
+  document.getElementById('theory-text').innerHTML = lv().theory;
+}
+
+function renderCanvas() {
+  const wrap = document.getElementById('canvas-wrap');
+  const W = wrap.clientWidth  || 700;
+  const H = wrap.clientHeight || 300;
+  const R = 24;
+  const nl = document.getElementById('nodes-layer');
+  const al = document.getElementById('arrows-layer');
+  nl.innerHTML = '';
+  al.innerHTML = '';
+
+  const pos = {};
+  lv().objects.forEach(o => { pos[o.id] = { x: o.x*W, y: o.y*H }; });
+
+  function path(f, t, off) {
+    const fp=pos[f], tp=pos[t];
+    const dx=tp.x-fp.x, dy=tp.y-fp.y, len=Math.sqrt(dx*dx+dy*dy);
+    const ux=dx/len, uy=dy/len;
+    const sx=fp.x+ux*R, sy=fp.y+uy*R;
+    const ex=tp.x-ux*(R+7), ey=tp.y-uy*(R+7);
+    if (!off) return `M${sx} ${sy} L${ex} ${ey}`;
+    const px=-uy*off, py=ux*off;
+    const mx=(sx+ex)/2+px, my=(sy+ey)/2+py;
+    return `M${sx} ${sy} Q${mx} ${my} ${ex} ${ey}`;
+  }
+
+  function mid(f, t, off) {
+    const fp=pos[f], tp=pos[t];
+    const mx=(fp.x+tp.x)/2, my=(fp.y+tp.y)/2;
+    if (!off) return { x:mx, y:my-16 };
+    const dx=tp.x-fp.x, dy=tp.y-fp.y, len=Math.sqrt(dx*dx+dy*dy);
+    return { x:mx+(-dy/len)*off, y:my+(dx/len)*off-14 };
+  }
+
+  const LABELS = { 'A>B':'f','B>C':'g','C>D':'h','A>C':'g∘f','B>D':'h∘g','A>D':'h∘g∘f' };
+
+  // Check which derived arrows are visible
+  const allRequired = lv().required.every(([a,b])=>state.arrows.some(s=>s[0]===a&&s[1]===b));
+  const derived = allRequired ? lv().derived : [];
+
+  // Combine user + derived arrows
+  const allArrows = [
+    ...state.arrows.map(([a,b])=>({from:a,to:b,type:'user'})),
+    ...derived.map(([a,b])=>({from:a,to:b,type:'derived'})),
+  ];
+
+  // Compute offsets for parallel arrows between same pair
+  const cnt={}, idx={};
+  allArrows.forEach(a=>{ const k=a.from+'>'+a.to; cnt[k]=(cnt[k]||0)+1; });
+  allArrows.forEach(a=>{
+    const k=a.from+'>'+a.to;
+    idx[k]=(idx[k]||0);
+    const i=idx[k]++;
+    a.off = cnt[k]>1 ? (i-(cnt[k]-1)/2)*30 : 0;
+  });
+
+  allArrows.forEach(a => {
+    const el = document.createElementNS('http://www.w3.org/2000/svg','path');
+    el.setAttribute('d', path(a.from,a.to,a.off));
+    el.setAttribute('marker-end', a.type==='derived'?'url(#ah-green)':'url(#ah)');
+    el.classList.add('arrow-line','visible');
+    if (a.type==='derived') el.classList.add('derived');
+    if (a.type==='user') {
+      el.style.cursor = 'pointer';
+      el.addEventListener('click', () => {
+        if (tool==='erase') {
+          state.arrows = state.arrows.filter(x=>!(x[0]===a.from&&x[1]===a.to));
+          update();
+        }
+      });
+    }
+    al.appendChild(el);
+
+    const lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+    const m = mid(a.from,a.to,a.off);
+    lbl.setAttribute('x', m.x);
+    lbl.setAttribute('y', m.y);
+    lbl.classList.add('arrow-label','visible');
+    if (a.type==='derived') lbl.classList.add('derived');
+    lbl.textContent = LABELS[a.from+'>'+a.to] || '';
+    al.appendChild(lbl);
+  });
+
+  // Identity arcs
+  state.ids.forEach(id => {
+    const p = pos[id];
+    if (!p) return;
+    const arc = document.createElementNS('http://www.w3.org/2000/svg','path');
+    arc.setAttribute('d', `M${p.x-R+4} ${p.y-8} A${R*0.9} ${R*0.9} 0 1 1 ${p.x+R-4} ${p.y-8}`);
+    arc.setAttribute('marker-end','url(#ah-dim)');
+    arc.classList.add('identity-arc','visible');
+    arc.style.cursor = 'pointer';
+    arc.addEventListener('click',()=>{ if(tool==='erase'){ state.ids=state.ids.filter(i=>i!==id); update(); } });
+    al.appendChild(arc);
+
+    const lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+    lbl.setAttribute('x', p.x);
+    lbl.setAttribute('y', p.y - R - 18);
+    lbl.classList.add('id-label','visible');
+    lbl.textContent = `id_${id}`;
+    al.appendChild(lbl);
+  });
+
+  // Object nodes
+  lv().objects.forEach(o => {
+    const p = pos[o.id];
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.classList.add('obj-node');
+    if (selecting===o.id) g.classList.add('selected');
+
+    const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('cx', p.x);
+    c.setAttribute('cy', p.y);
+    c.setAttribute('r', R);
+    g.appendChild(c);
+
+    const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x', p.x);
+    t.setAttribute('y', p.y);
+    t.textContent = o.id;
+    g.appendChild(t);
+
+    g.addEventListener('click', () => handleClick(o.id));
+    nl.appendChild(g);
+  });
+}
+
+function handleClick(id) {
+  if (tool==='identity') {
+    if (!state.ids.includes(id)) state.ids.push(id);
+    update();
+    return;
+  }
+  if (tool==='erase') return;
+  if (tool==='arrow') {
+    if (!selecting) {
+      selecting = id;
+      renderCanvas();
+      setRawFeedback('info', `Source: ${id}. Now click the target.`);
+      return;
+    }
+    if (selecting===id) { selecting=null; renderCanvas(); feedback('default'); return; }
+    const from=selecting, to=id;
+    selecting=null;
+
+    if (lv().derived.some(d=>d[0]===from&&d[1]===to)) {
+      setRawFeedback('hint', `${from}→${to} appears automatically from composition — you don't need to place it.`);
+      renderCanvas(); return;
+    }
+    if (!lv().required.some(r=>r[0]===from&&r[1]===to)) {
+      setRawFeedback('hint', `That arrow isn't part of this puzzle.`);
+      renderCanvas(); return;
+    }
+    if (state.arrows.some(a=>a[0]===from&&a[1]===to)) {
+      setRawFeedback('info', `${from}→${to} already placed.`);
+      renderCanvas(); return;
+    }
+    state.arrows.push([from,to]);
+    update();
+  }
+}
+
+function update() {
+  renderCanvas();
+  renderLaws();
+  checkDone();
+}
+
+function renderLaws() {
+  document.getElementById('law-panel').innerHTML = lv().laws.map(l => {
+    const sat = l.check(state);
+    return `<div class="law-card ${sat?'satisfied':''}">
+      <div class="law-title">${sat?'✓ ':''}${l.title}</div>
+      ${l.body ? `<div class="law-body">${l.body}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function checkDone() {
+  const done = lv().laws.every(l => l.check(state));
+  if (!done) {
+    // Partial feedback
+    if (lv().feedback.placed_BC && state.arrows.some(a=>a[0]==='B'&&a[1]==='C'))
+      setRawFeedback('success', lv().feedback.placed_BC);
+    else if (lv().feedback.placed_AB && state.arrows.some(a=>a[0]==='A'&&a[1]==='B'))
+      setRawFeedback('info', lv().feedback.placed_AB);
+    else if (lv().feedback.placed_id && state.ids.length>0)
+      setRawFeedback('info', lv().feedback.placed_id);
+    return;
+  }
+  setRawFeedback('success', lv().feedback.done);
+  if (level < LEVELS.length-1) {
+    document.getElementById('next-btn').style.display = 'inline-block';
+  } else {
+    document.getElementById('completion-banner').style.display = 'block';
+  }
+}
+
+function feedback(key) {
+  const msg = lv().feedback[key] || lv().feedback.default || '';
+  setRawFeedback('info', msg);
+}
+
+function setRawFeedback(type, msg) {
+  const bar = document.getElementById('feedback-bar');
+  const icons = { info:'◦', success:'✓', hint:'△' };
+  bar.className = 'feedback-bar ' + (type==='info' ? '' : type);
+  bar.innerHTML = `<span class="feedback-icon">${icons[type]||'◦'}</span><span id="feedback-text">${msg}</span>`;
+}
+
+function setTool(t) {
+  tool = t;
+  selecting = null;
+  ['arrow','identity','erase'].forEach(x =>
+    document.getElementById('btn-'+x).classList.toggle('active', x===t)
+  );
+  renderCanvas();
+  const hints = { arrow:'Click a source object, then a target.', identity:'Click an object to place its identity morphism.', erase:'Click an arrow or identity arc to remove it.' };
+  setRawFeedback('info', hints[t]);
+}
+
+function resetLevel() { init(); }
+
+function nextLevel() {
+  if (level < LEVELS.length-1) { level++; init(); }
+}
+
+window.setTool = setTool;
+window.resetLevel = resetLevel;
+window.nextLevel = nextLevel;
+
+window.addEventListener('resize', renderCanvas);
+init();
+</script>
+</body>
+</html>
