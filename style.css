@@ -20,7 +20,7 @@
   --font: 'Georgia', 'Times New Roman', serif;
   --mono: 'Courier New', monospace;
 
-  /* User-configurable arrow colors */
+  /* User-configurable arrow colors. */
   --arrow-color:     #5a5a54;   /* base morphisms */
   --composite-color: #1D9E75;   /* derived / composite morphisms */
 }
