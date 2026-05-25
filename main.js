@@ -236,7 +236,7 @@ const TUTORIAL_LEVELS = [
     required: [['A', 'B']], derived: [], reqIds: [],
     laws: [
       { title: 'f : A → B', body: 'A directed morphism from A to B.',
-        check: s => s.arrows.some(a => a.from === 'A' && a.to === 'B') },
+        check: s => s.arrows.some(a => a[0] === 'A' && a[1] === 'B') },
     ],
     feedback: {
       default: 'Click A (source), then B (target) to place the arrow.',
@@ -250,10 +250,10 @@ const TUTORIAL_LEVELS = [
     objects: [{ id: 'A', x: 0.18, y: 0.5 }, { id: 'B', x: 0.5, y: 0.5 }, { id: 'C', x: 0.82, y: 0.5 }],
     required: [['A', 'B'], ['B', 'C']], derived: [['A', 'C']], reqIds: [],
     laws: [
-      { title: 'f : A → B', body: 'First morphism.', check: s => s.arrows.some(a => a.from === 'A' && a.to === 'B') },
-      { title: 'g : B → C', body: 'Second morphism.', check: s => s.arrows.some(a => a.from === 'B' && a.to === 'C') },
+      { title: 'f : A → B', body: 'First morphism.', check: s => s.arrows.some(a => a[0] === 'A' && a[1] === 'B') },
+      { title: 'g : B → C', body: 'Second morphism.', check: s => s.arrows.some(a => a[0] === 'B' && a[1] === 'C') },
       { title: 'g∘f : A → C exists', body: 'Required by composition — appears automatically.',
-        check: s => s.arrows.some(a => a.from === 'A' && a.to === 'B') && s.arrows.some(a => a.from === 'B' && a.to === 'C') },
+        check: s => s.arrows.some(a => a[0] === 'A' && a[1] === 'B') && s.arrows.some(a => a[0] === 'B' && a[1] === 'C') },
     ],
     feedback: {
       default: 'Place f : A → B first.',
@@ -269,7 +269,7 @@ const TUTORIAL_LEVELS = [
     objects: [{ id: 'A', x: 0.3, y: 0.5 }, { id: 'B', x: 0.7, y: 0.5 }],
     required: [['A', 'B']], derived: [], reqIds: ['A', 'B'],
     laws: [
-      { title: 'f : A → B', body: '', check: s => s.arrows.some(a => a.from === 'A' && a.to === 'B') },
+      { title: 'f : A → B', body: '', check: s => s.arrows.some(a => a[0] === 'A' && a[1] === 'B') },
       { title: 'id_A : A → A', body: 'Use ↻ tool, then click A.', check: s => s.ids.includes('A') },
       { title: 'id_B : B → B', body: 'Use ↻ tool, then click B.', check: s => s.ids.includes('B') },
     ],
@@ -286,11 +286,11 @@ const TUTORIAL_LEVELS = [
     objects: [{ id: 'A', x: 0.12, y: 0.5 }, { id: 'B', x: 0.37, y: 0.5 }, { id: 'C', x: 0.63, y: 0.5 }, { id: 'D', x: 0.88, y: 0.5 }],
     required: [['A', 'B'], ['B', 'C'], ['C', 'D']], derived: [['A', 'C'], ['B', 'D'], ['A', 'D']], reqIds: [],
     laws: [
-      { title: 'f : A → B', body: '', check: s => s.arrows.some(a => a.from === 'A' && a.to === 'B') },
-      { title: 'g : B → C', body: '', check: s => s.arrows.some(a => a.from === 'B' && a.to === 'C') },
-      { title: 'h : C → D', body: '', check: s => s.arrows.some(a => a.from === 'C' && a.to === 'D') },
+      { title: 'f : A → B', body: '', check: s => s.arrows.some(a => a[0] === 'A' && a[1] === 'B') },
+      { title: 'g : B → C', body: '', check: s => s.arrows.some(a => a[0] === 'B' && a[1] === 'C') },
+      { title: 'h : C → D', body: '', check: s => s.arrows.some(a => a[0] === 'C' && a[1] === 'D') },
       { title: 'h∘(g∘f) = (h∘g)∘f', body: "Bracketing order doesn't change the result.",
-        check: s => s.arrows.some(a => a.from === 'A' && a.to === 'B') && s.arrows.some(a => a.from === 'B' && a.to === 'C') && s.arrows.some(a => a.from === 'C' && a.to === 'D') },
+        check: s => s.arrows.some(a => a[0] === 'A' && a[1] === 'B') && s.arrows.some(a => a[0] === 'B' && a[1] === 'C') && s.arrows.some(a => a[0] === 'C' && a[1] === 'D') },
     ],
     feedback: {
       default: 'Place f, g, and h one by one.',
@@ -302,8 +302,8 @@ const TUTORIAL_LEVELS = [
 const DERIVED_LABELS = { 'A>C': 'g∘f', 'B>D': 'h∘g', 'A>D': 'h∘g∘f', 'A>B': 'f', 'B>C': 'g', 'C>D': 'h' };
 
 let tLevel = 0;
-let tState = { arrows: [], ids: [] };  // arrows: [{ from, to, kind }]  kind = 'base'|'composite'
-let tTool = 'arrow';                   // 'arrow' | 'composite' | 'identity' | 'erase'
+let tState = { arrows: [], ids: [] };
+let tTool = 'arrow';
 let tSelecting = null;
 
 function tlv() { return TUTORIAL_LEVELS[tLevel]; }
@@ -336,14 +336,10 @@ function tRenderCanvas() {
   const visibleDerived = allRequired ? tlv().derived : [];
 
   const arrowStyles = [];
-  tState.arrows.forEach(a => {
-    const isComposite = a.kind === 'composite';
+  tState.arrows.forEach(([f, t]) => {
     arrowStyles.push({
-      from: a.from, to: a.to,
-      cls: isComposite ? 'derived' : '',
-      labelCls: isComposite ? 'derived' : '',
-      label: DERIVED_LABELS[a.from + '>' + a.to] || '',
-      onClick: () => { if (tTool === 'erase') { tState.arrows = tState.arrows.filter(x => !(x.from === a.from && x.to === a.to)); tUpdate(); } }
+      from: f, to: t, cls: '', label: DERIVED_LABELS[f + '>' + t] || '',
+      onClick: () => { if (tTool === 'erase') { tState.arrows = tState.arrows.filter(x => !(x[0] === f && x[1] === t)); tUpdate(); } }
     });
   });
   visibleDerived.forEach(([f, t]) => {
@@ -367,30 +363,26 @@ function tHandleClick(id) {
     tUpdate(); return;
   }
   if (tTool === 'erase') return;
-  if (tTool === 'arrow' || tTool === 'composite') {
-    if (!tSelecting) {
-      tSelecting = id; tRenderCanvas();
-      tSetRawFeedback('info', `Source: ${id}. Now click the target.`); return;
-    }
-    if (tSelecting === id) { tSelecting = null; tRenderCanvas(); tFeedback('default'); return; }
-    const from = tSelecting, to = id;
-    const kind = tTool === 'composite' ? 'composite' : 'base';
-    tSelecting = null;
-
-    if (tlv().derived.some(d => d[0] === from && d[1] === to)) {
-      tSetRawFeedback('hint', `${from}→${to} appears automatically from composition — don't place it manually.`);
-      tRenderCanvas(); return;
-    }
-    if (!tlv().required.some(r => r[0] === from && r[1] === to)) {
-      tSetRawFeedback('hint', `That arrow isn't part of this puzzle.`);
-      tRenderCanvas(); return;
-    }
-    if (tState.arrows.some(a => a.from === from && a.to === to)) {
-      tSetRawFeedback('info', `${from}→${to} already placed.`); tRenderCanvas(); return;
-    }
-    tState.arrows.push({ from, to, kind });
-    tUpdate();
+  if (!tSelecting) {
+    tSelecting = id; tRenderCanvas();
+    tSetRawFeedback('info', `Source: ${id}. Now click the target.`); return;
   }
+  if (tSelecting === id) { tSelecting = null; tRenderCanvas(); tFeedback('default'); return; }
+  const from = tSelecting, to = id; tSelecting = null;
+
+  if (tlv().derived.some(d => d[0] === from && d[1] === to)) {
+    tSetRawFeedback('hint', `${from}→${to} appears automatically from composition — don't place it manually.`);
+    tRenderCanvas(); return;
+  }
+  if (!tlv().required.some(r => r[0] === from && r[1] === to)) {
+    tSetRawFeedback('hint', `That arrow isn't part of this puzzle.`);
+    tRenderCanvas(); return;
+  }
+  if (tState.arrows.some(a => a[0] === from && a[1] === to)) {
+    tSetRawFeedback('info', `${from}→${to} already placed.`); tRenderCanvas(); return;
+  }
+  tState.arrows.push([from, to]);
+  tUpdate();
 }
 
 function tUpdate() { tRenderCanvas(); tRenderLaws(); tCheckDone(); }
@@ -409,9 +401,9 @@ function tCheckDone() {
   const done = tlv().laws.every(l => l.check(tState));
   if (!done) {
     const fb = tlv().feedback;
-    if (fb.placed_BC && tState.arrows.some(a => a.from === 'B' && a.to === 'C'))
+    if (fb.placed_BC && tState.arrows.some(a => a[0] === 'B' && a[1] === 'C'))
       tSetRawFeedback('success', fb.placed_BC);
-    else if (fb.placed_AB && tState.arrows.some(a => a.from === 'A' && a.to === 'B'))
+    else if (fb.placed_AB && tState.arrows.some(a => a[0] === 'A' && a[1] === 'B'))
       tSetRawFeedback('info', fb.placed_AB);
     else if (fb.placed_id && tState.ids.length > 0)
       tSetRawFeedback('info', fb.placed_id);
@@ -464,8 +456,8 @@ const DIFFICULTIES = {
 
 let pDiff = 'easy';
 let pPuzzle = null;
-let pState = { arrows: [], ids: [] };  // arrows: [{ from, to, kind }]
-let pTool = 'arrow';                   // 'arrow' | 'composite' | 'identity' | 'erase'
+let pState = { arrows: [], ids: [] };
+let pTool = 'arrow';
 let pSelecting = null;
 let pSubmitted = false;
 let pScore = { streak: 0, correct: 0, wrong: 0 };
@@ -574,14 +566,10 @@ function pRenderCanvas(resultMode) {
   const arrowStyles = [], idStyles = [];
 
   if (!resultMode) {
-    pState.arrows.forEach(a => {
-      const isComposite = a.kind === 'composite';
+    pState.arrows.forEach(([f, t]) => {
       arrowStyles.push({
-        from: a.from, to: a.to,
-        cls: isComposite ? 'derived' : '',
-        labelCls: isComposite ? 'derived' : '',
-        label: '',
-        onClick: () => { if (pTool === 'erase') { pState.arrows = pState.arrows.filter(x => !(x.from === a.from && x.to === a.to)); pRenderCanvas(); } }
+        from: f, to: t, cls: '', label: '',
+        onClick: () => { if (pTool === 'erase') { pState.arrows = pState.arrows.filter(x => !(x[0] === f && x[1] === t)); pRenderCanvas(); } }
       });
     });
     pState.ids.forEach(id => {
@@ -590,11 +578,11 @@ function pRenderCanvas(resultMode) {
   } else {
     const correct = pPuzzle.correctArrows, correctIds = pPuzzle.correctIds;
     const placed = pState.arrows, placedIds = pState.ids;
-    placed.forEach(a => {
-      arrowStyles.push({ from: a.from, to: a.to, cls: correct.some(c => c[0] === a.from && c[1] === a.to) ? 'correct-arrow' : 'wrong-arrow', label: '' });
+    placed.forEach(([f, t]) => {
+      arrowStyles.push({ from: f, to: t, cls: correct.some(c => c[0] === f && c[1] === t) ? 'correct-arrow' : 'wrong-arrow', label: '' });
     });
     correct.forEach(([f, t]) => {
-      if (!placed.some(p => p.from === f && p.to === t))
+      if (!placed.some(p => p[0] === f && p[1] === t))
         arrowStyles.push({ from: f, to: t, cls: 'missing-arrow', label: '?', labelCls: 'missing' });
     });
     placedIds.forEach(id => { idStyles.push({ id, cls: (correctIds.includes(id) || correctIds.length === 0) ? 'correct-id' : 'wrong-id' }); });
